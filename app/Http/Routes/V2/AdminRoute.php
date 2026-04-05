@@ -10,6 +10,7 @@ use App\Http\Controllers\V2\Admin\OrderController;
 use App\Http\Controllers\V2\Admin\UserController;
 use App\Http\Controllers\V2\Admin\StatController;
 use App\Http\Controllers\V2\Admin\NoticeController;
+use App\Http\Controllers\V2\Admin\PersonalNoticeController;
 use App\Http\Controllers\V2\Admin\TicketController;
 use App\Http\Controllers\V2\Admin\CouponController;
 use App\Http\Controllers\V2\Admin\GiftCardController;
@@ -128,6 +129,7 @@ class AdminRoute
                 $router->get('/getRanking', [StatController::class, 'getRanking']);
                 $router->get('/getStatRecord', [StatController::class, 'getStatRecord']);
                 $router->get('/getTrafficRank', [StatController::class, 'getTrafficRank']);
+                $router->get('/getDeviceAnalytics', [StatController::class, 'getDeviceAnalytics']);
             });
 
             // Notice
@@ -140,6 +142,16 @@ class AdminRoute
                 $router->post('/drop', [NoticeController::class, 'drop']);
                 $router->post('/show', [NoticeController::class, 'show']);
                 $router->post('/sort', [NoticeController::class, 'sort']);
+            });
+
+            $router->group([
+                'prefix' => 'personal-notice'
+            ], function ($router) {
+                $router->get('/fetch', [PersonalNoticeController::class, 'fetch']);
+                $router->post('/save', [PersonalNoticeController::class, 'save']);
+                $router->post('/drop', [PersonalNoticeController::class, 'drop']);
+                $router->post('/show', [PersonalNoticeController::class, 'show']);
+                $router->post('/search-users', [PersonalNoticeController::class, 'searchUsers']);
             });
 
             // Ticket

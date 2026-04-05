@@ -19,7 +19,8 @@ class ComissionLogResource extends JsonResource
             "order_amount" => $this['order_amount'],
             "trade_no" => $this['trade_no'],
             "get_amount" => $this['get_amount'],
-            "created_at" => $this['created_at']
+            "created_at" => $this['created_at'],
+            "inviter_email" => $this['inviter_email'] ?? null
         ];
     }
 }

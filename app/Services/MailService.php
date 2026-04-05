@@ -13,6 +13,48 @@ use Illuminate\Support\Facades\Mail;
 
 class MailService
 {
+    private static function hasAdminSmtpConfig(): bool
+    {
+        return (string) admin_setting('email_host', '') !== '';
+    }
+
+    private static function applyMailRuntimeConfig(): void
+    {
+        if (!self::hasAdminSmtpConfig()) {
+            return;
+        }
+
+        $host = (string) admin_setting('email_host', config('mail.mailers.smtp.host'));
+        $port = admin_setting('email_port', config('mail.mailers.smtp.port'));
+        $username = admin_setting('email_username', config('mail.mailers.smtp.username'));
+        $password = admin_setting('email_password', config('mail.mailers.smtp.password'));
+        $encryption = admin_setting('email_encryption', config('mail.mailers.smtp.encryption'));
+        $fromAddress = admin_setting('email_from_address', config('mail.from.address'));
+        $fromName = admin_setting('app_name', config('mail.from.name', 'XBoard'));
+
+        Config::set('mail.default', 'smtp');
+        Config::set('mail.mailers.smtp.transport', 'smtp');
+        Config::set('mail.mailers.smtp.host', $host);
+        Config::set('mail.mailers.smtp.port', $port);
+        Config::set('mail.mailers.smtp.username', $username);
+        Config::set('mail.mailers.smtp.password', $password);
+        Config::set('mail.mailers.smtp.encryption', $encryption ?: null);
+        Config::set('mail.from.address', $fromAddress);
+        Config::set('mail.from.name', $fromName);
+
+        // Keep legacy keys aligned for older internal references.
+        Config::set('mail.host', $host);
+        Config::set('mail.port', $port);
+        Config::set('mail.username', $username);
+        Config::set('mail.password', $password);
+        Config::set('mail.encryption', $encryption ?: null);
+
+        $mailManager = app('mail.manager');
+        if (method_exists($mailManager, 'forgetMailers')) {
+            $mailManager->forgetMailers();
+        }
+    }
+
     // Render {{key}} / {{key|default}} placeholders.
     private static function renderPlaceholders(string $template, array $vars): string
     {
@@ -238,15 +280,7 @@ class MailService
      */
     public static function sendEmail(array $params)
     {
-        if (admin_setting('email_host')) {
-            Config::set('mail.host', admin_setting('email_host', config('mail.host')));
-            Config::set('mail.port', admin_setting('email_port', config('mail.port')));
-            Config::set('mail.encryption', admin_setting('email_encryption', config('mail.encryption')));
-            Config::set('mail.username', admin_setting('email_username', config('mail.username')));
-            Config::set('mail.password', admin_setting('email_password', config('mail.password')));
-            Config::set('mail.from.address', admin_setting('email_from_address', config('mail.from.address')));
-            Config::set('mail.from.name', admin_setting('app_name', 'XBoard'));
-        }
+        self::applyMailRuntimeConfig();
         $email = $params['email'];
         $subject = $params['subject'];
 
@@ -270,7 +304,7 @@ class MailService
         $params['template_value'] = $templateValue;
         $params['template_name'] = 'mail.' . admin_setting('email_template', 'default') . '.' . $params['template_name'];
         try {
-            Mail::send(
+            Mail::mailer(config('mail.default', 'smtp'))->send(
                 $params['template_name'],
                 $params['template_value'],
                 function ($message) use ($email, $subject) {

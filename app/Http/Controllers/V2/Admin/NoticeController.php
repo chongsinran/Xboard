@@ -6,11 +6,17 @@ use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\NoticeSave;
 use App\Models\Notice;
+use App\Services\NoticePushService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class NoticeController extends Controller
 {
+    public function __construct(
+        private readonly NoticePushService $pushService,
+    ) {
+    }
+
     public function fetch(Request $request)
     {
         return $this->success(
@@ -30,8 +36,10 @@ class NoticeController extends Controller
             'show',
             'popup'
         ]);
+        $createdNotice = null;
         if (!$request->input('id')) {
-            if (!Notice::create($data)) {
+            $createdNotice = Notice::create($data);
+            if (!$createdNotice) {
                 return $this->fail([500, '保存失败']);
             }
         } else {
@@ -41,6 +49,11 @@ class NoticeController extends Controller
                 return $this->fail([500, '保存失败']);
             }
         }
+
+        if ($createdNotice && $createdNotice->show) {
+            $this->pushService->publish($createdNotice);
+        }
+
         return $this->success(true);
     }
 

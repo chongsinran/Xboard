@@ -17,9 +17,12 @@ class KnowledgeResource extends JsonResource
   {
     $data = [
       'id' => $this['id'],
+      'language' => $this['language'] ?? null,
       'category' => $this['category'],
       'title' => $this['title'],
       'body' => $this->when(isset($this['body']), $this['body']),
+      'show' => $this['show'] ?? 1,
+      'created_at' => $this['created_at'] ?? null,
       'updated_at' => $this['updated_at'],
     ];
 

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Services\InviteRewardService;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -46,6 +47,7 @@ class TrafficFetchJob implements ShouldQueue
 
         if (!empty($userIds)) {
             Redis::sadd('traffic:pending_check', ...$userIds);
+            app(InviteRewardService::class)->markUsersValidByTrafficIds($userIds);
         }
     }
 }

@@ -3,11 +3,13 @@ namespace App\Http\Routes\V1;
 
 use App\Http\Controllers\V1\User\CommController;
 use App\Http\Controllers\V1\User\CouponController;
+use App\Http\Controllers\V1\User\DeviceAnalyticsController;
 use App\Http\Controllers\V1\User\GiftCardController;
 use App\Http\Controllers\V1\User\InviteController;
 use App\Http\Controllers\V1\User\KnowledgeController;
 use App\Http\Controllers\V1\User\NoticeController;
 use App\Http\Controllers\V1\User\OrderController;
+use App\Http\Controllers\V1\User\PersonalNoticeController;
 use App\Http\Controllers\V1\User\PlanController;
 use App\Http\Controllers\V1\User\ServerController;
 use App\Http\Controllers\V1\User\StatController;
@@ -28,10 +30,14 @@ class UserRoute
             $router->get('/resetSecurity', [UserController::class, 'resetSecurity']);
             $router->get('/info', [UserController::class, 'info']);
             $router->post('/changePassword', [UserController::class, 'changePassword']);
+            $router->post('/directChangePassword', [UserController::class, 'directChangePassword']);
+            $router->post('/setPassword', [UserController::class, 'setPassword']);
+            $router->post('/bindInviteCode', [UserController::class, 'bindInviteCode']);
             $router->post('/update', [UserController::class, 'update']);
             $router->get('/getSubscribe', [UserController::class, 'getSubscribe']);
             $router->get('/getStat', [UserController::class, 'getStat']);
             $router->get('/checkLogin', [UserController::class, 'checkLogin']);
+            $router->post('/device/heartbeat', [DeviceAnalyticsController::class, 'heartbeat']);
             $router->post('/transfer', [UserController::class, 'transfer']);
             $router->post('/getQuickLoginUrl', [UserController::class, 'getQuickLoginUrl']);
             $router->get('/getActiveSession', [UserController::class, 'getActiveSession']);
@@ -50,8 +56,12 @@ class UserRoute
             $router->get('/invite/save', [InviteController::class, 'save']);
             $router->get('/invite/fetch', [InviteController::class, 'fetch']);
             $router->get('/invite/details', [InviteController::class, 'details']);
+            $router->get('/commission/listCommissionWithdraw', [TicketController::class, 'listCommissionWithdraw']);
+            $router->post('/commission/commissionWithdraw', [TicketController::class, 'commissionWithdraw']);
             // Notice
             $router->get('/notice/fetch', [NoticeController::class, 'fetch']);
+            $router->get('/personal-notice/fetch', [PersonalNoticeController::class, 'fetch']);
+            $router->post('/personal-notice/read', [PersonalNoticeController::class, 'read']);
             // Ticket
             $router->post('/ticket/reply', [TicketController::class, 'reply']);
             $router->post('/ticket/close', [TicketController::class, 'close']);

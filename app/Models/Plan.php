@@ -53,6 +53,10 @@ class Plan extends Model
 
     // 定义可用的订阅周期
     public const PERIOD_MONTHLY = 'monthly';
+    public const PERIOD_ONE_DAY = 'one_day';
+    public const PERIOD_THREE_DAYS = 'three_days';
+    public const PERIOD_SEVEN_DAYS = 'seven_days';
+    public const PERIOD_FOURTEEN_DAYS = 'fourteen_days';
     public const PERIOD_QUARTERLY = 'quarterly';
     public const PERIOD_HALF_YEARLY = 'half_yearly';
     public const PERIOD_YEARLY = 'yearly';
@@ -64,6 +68,10 @@ class Plan extends Model
     // 定义旧版周期映射
     public const LEGACY_PERIOD_MAPPING = [
         'month_price' => self::PERIOD_MONTHLY,
+        'day_price' => self::PERIOD_ONE_DAY,
+        'three_day_price' => self::PERIOD_THREE_DAYS,
+        'seven_day_price' => self::PERIOD_SEVEN_DAYS,
+        'fourteen_day_price' => self::PERIOD_FOURTEEN_DAYS,
         'quarter_price' => self::PERIOD_QUARTERLY,
         'half_year_price' => self::PERIOD_HALF_YEARLY,
         'year_price' => self::PERIOD_YEARLY,
@@ -126,6 +134,26 @@ class Plan extends Model
     public static function getAvailablePeriods(): array
     {
         return [
+            self::PERIOD_ONE_DAY => [
+                'name' => '1天付',
+                'days' => 1,
+                'value' => round(1 / 30, 4)
+            ],
+            self::PERIOD_THREE_DAYS => [
+                'name' => '3天付',
+                'days' => 3,
+                'value' => round(3 / 30, 4)
+            ],
+            self::PERIOD_SEVEN_DAYS => [
+                'name' => '7天付',
+                'days' => 7,
+                'value' => round(7 / 30, 4)
+            ],
+            self::PERIOD_FOURTEEN_DAYS => [
+                'name' => '14天付',
+                'days' => 14,
+                'value' => round(14 / 30, 4)
+            ],
             self::PERIOD_MONTHLY => [
                 'name' => '月付',
                 'days' => 30,

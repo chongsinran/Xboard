@@ -7,6 +7,8 @@ use App\Models\CommissionLog;
 use App\Models\Order;
 use App\Models\Server;
 use App\Models\Stat;
+use App\Models\DailyActiveBundle;
+use App\Models\UserDevice;
 use App\Models\StatServer;
 use App\Models\StatUser;
 use App\Models\Ticket;
@@ -23,6 +25,10 @@ class StatController extends Controller
     }
     public function getOverride(Request $request)
     {
+        $todayStart = strtotime('today');
+        $deviceToday = DailyActiveBundle::where('activity_date', date('Y-m-d'));
+        $registrationToday = UserDevice::where('created_at', '>=', $todayStart);
+
         // 获取在线节点数
         $onlineNodes = Server::all()->filter(function ($server) {
             return !!$server->is_online;
@@ -34,7 +40,6 @@ class StatController extends Controller
             ->count();
 
         // 获取今日流量统计
-        $todayStart = strtotime('today');
         $todayTraffic = StatServer::where('record_at', '>=', $todayStart)
             ->where('record_at', '<', time())
             ->selectRaw('SUM(u) as upload, SUM(d) as download, SUM(u + d) as total')
@@ -99,9 +104,59 @@ class StatController extends Controller
                     'upload' => $totalTraffic->upload ?? 0,
                     'download' => $totalTraffic->download ?? 0,
                     'total' => $totalTraffic->total ?? 0
-                ]
+                ],
+                'today_active_bundle_ids' => (clone $deviceToday)->distinct('bundle_id')->count('bundle_id'),
+                'today_active_devices' => (clone $deviceToday)->distinct('device_id')->count('device_id'),
+                'today_registration_devices' => (clone $registrationToday)->distinct('device_id')->count('device_id'),
             ]
         ];
+    }
+
+    public function getDeviceAnalytics(Request $request)
+    {
+        $days = max(1, min((int) $request->input('days', 7), 30));
+        $startDate = date('Y-m-d', strtotime('-' . ($days - 1) . ' days'));
+
+        $dailyRows = DailyActiveBundle::query()
+            ->selectRaw('activity_date, bundle_id, platform, distribution_channel, COUNT(DISTINCT user_id) as active_users, COUNT(DISTINCT device_id) as active_devices')
+            ->where('activity_date', '>=', $startDate)
+            ->groupBy('activity_date', 'bundle_id', 'platform', 'distribution_channel')
+            ->orderBy('activity_date')
+            ->get();
+
+        $registrationRows = UserDevice::query()
+            ->selectRaw("DATE(FROM_UNIXTIME(created_at)) as registration_date, bundle_id, platform, distribution_channel, COUNT(DISTINCT user_id) as registrations")
+            ->where('created_at', '>=', strtotime($startDate . ' 00:00:00'))
+            ->groupBy('registration_date', 'bundle_id', 'platform', 'distribution_channel')
+            ->orderBy('registration_date')
+            ->get();
+
+        $summary = [
+            'days' => $days,
+            'active_users_total' => DailyActiveBundle::query()
+                ->where('activity_date', '>=', $startDate)
+                ->distinct('user_id')
+                ->count('user_id'),
+            'active_devices_total' => DailyActiveBundle::query()
+                ->where('activity_date', '>=', $startDate)
+                ->distinct('device_id')
+                ->count('device_id'),
+            'bundle_ids_total' => DailyActiveBundle::query()
+                ->where('activity_date', '>=', $startDate)
+                ->distinct('bundle_id')
+                ->count('bundle_id'),
+            'registrations_total' => UserDevice::query()
+                ->where('created_at', '>=', strtotime($startDate . ' 00:00:00'))
+                ->where('is_registration_device', true)
+                ->distinct('user_id')
+                ->count('user_id'),
+        ];
+
+        return $this->success([
+            'summary' => $summary,
+            'daily' => $dailyRows,
+            'registrations' => $registrationRows,
+        ]);
     }
 
     /**

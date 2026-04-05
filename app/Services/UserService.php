@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Hash;
 
 class UserService
 {
+    private const BYTES_PER_GIGABYTE = 1073741824;
+
     /**
      * Get the remaining days until the next traffic reset for a user.
      * This method reuses the TrafficResetService logic for consistency.
@@ -189,6 +191,45 @@ class UserService
     }
 
     /**
+     * Apply invite registration rewards to a newly created user and inviter.
+     * This should only run once right after the first successful save.
+     */
+    public function applyInviteRegistrationRewards(User $user): void
+    {
+        if (!(bool) admin_setting('invite_register_reward_enable', 0)) {
+            return;
+        }
+
+        if (!$user->invite_user_id) {
+            return;
+        }
+
+        $refereeTransferBytes = $this->gigabytesToBytes(
+            admin_setting('invite_register_referee_transfer_gb', 0)
+        );
+        $refereeHours = max(0, (float) admin_setting('invite_register_referee_hours', 0));
+        $referrerTransferBytes = $this->gigabytesToBytes(
+            admin_setting('invite_register_referrer_transfer_gb', 0)
+        );
+        $referrerHours = max(0, (float) admin_setting('invite_register_referrer_hours', 0));
+
+        if ($refereeTransferBytes > 0 || $refereeHours > 0) {
+            $this->applyRegistrationReward($user, $refereeTransferBytes, $refereeHours);
+        }
+
+        if ($referrerTransferBytes <= 0 && $referrerHours <= 0) {
+            return;
+        }
+
+        $inviter = User::find($user->invite_user_id);
+        if (!$inviter) {
+            return;
+        }
+
+        $this->applyRegistrationReward($inviter, $referrerTransferBytes, $referrerHours);
+    }
+
+    /**
      * 设置可选字段
      */
     private function setOptionalFields(User $user, array $data): void
@@ -220,7 +261,7 @@ class UserService
 
         $user->plan_id = $plan->id;
         $user->group_id = $plan->group_id;
-        $user->transfer_enable = $plan->transfer_enable * 1073741824;
+        $user->transfer_enable = $plan->transfer_enable * self::BYTES_PER_GIGABYTE;
         $user->speed_limit = $plan->speed_limit;
 
         if ($expiredAt) {
@@ -240,7 +281,7 @@ class UserService
     {
         $user->plan_id = $plan->id;
         $user->group_id = $plan->group_id;
-        $user->transfer_enable = $plan->transfer_enable * 1073741824;
+        $user->transfer_enable = $plan->transfer_enable * self::BYTES_PER_GIGABYTE;
         $user->speed_limit = $plan->speed_limit;
         $user->device_limit = $plan->device_limit;
 
@@ -279,10 +320,31 @@ class UserService
         if (!$plan)
             return;
 
-        $user->transfer_enable = $plan->transfer_enable * 1073741824;
+        $user->transfer_enable = $plan->transfer_enable * self::BYTES_PER_GIGABYTE;
         $user->plan_id = $plan->id;
         $user->group_id = $plan->group_id;
         $user->expired_at = time() + (admin_setting('try_out_hour', 1) * 3600);
         $user->speed_limit = $plan->speed_limit;
+    }
+
+    private function applyRegistrationReward(User $user, int $transferBytes, float $hours): void
+    {
+        if ($transferBytes > 0) {
+            $user->transfer_enable = (int) ($user->transfer_enable ?? 0) + $transferBytes;
+        }
+
+        if ($hours > 0 && $user->expired_at !== null) {
+            $baseExpiredAt = max((int) $user->expired_at, time());
+            $user->expired_at = $baseExpiredAt + (int) round($hours * 3600);
+        }
+
+        $user->save();
+    }
+
+    private function gigabytesToBytes(mixed $gigabytes): int
+    {
+        $normalizedGigabytes = max(0, (float) $gigabytes);
+
+        return (int) round($normalizedGigabytes * self::BYTES_PER_GIGABYTE);
     }
 }

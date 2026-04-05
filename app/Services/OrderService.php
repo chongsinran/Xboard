@@ -14,10 +14,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use App\Services\PlanService;
+use App\Services\InviteRewardService;
 
 class OrderService
 {
     const STR_TO_TIME = [
+        Plan::PERIOD_ONE_DAY => 1,
+        Plan::PERIOD_THREE_DAYS => 3,
+        Plan::PERIOD_SEVEN_DAYS => 7,
+        Plan::PERIOD_FOURTEEN_DAYS => 14,
         Plan::PERIOD_MONTHLY => 1,
         Plan::PERIOD_QUARTERLY => 3,
         Plan::PERIOD_HALF_YEARLY => 6,
@@ -143,6 +148,10 @@ class OrderService
         }
 
         HookManager::call('order.open.after', $order);
+
+        if ($this->user && $order->status === Order::STATUS_COMPLETED) {
+            app(InviteRewardService::class)->markInviteePaid($this->user, $order);
+        }
     }
 
 
@@ -257,9 +266,9 @@ class OrderService
             }
 
             $orderAmountSum = $orders->sum(fn($item) => $item->total_amount + $item->balance_amount + $item->surplus_amount - $item->refund_amount);
-            $orderMonthSum = $orders->sum(fn($item) => self::STR_TO_TIME[PlanService::getPeriodKey($item->period)] ?? 0);
+            $orderDaySum = $orders->sum(fn($item) => Plan::getPeriodDays(PlanService::getPeriodKey($item->period)));
             $firstOrderAt = $orders->min('created_at');
-            $expiredAt = Carbon::createFromTimestamp($firstOrderAt)->addMonths($orderMonthSum);
+            $expiredAt = Carbon::createFromTimestamp($firstOrderAt)->addDays($orderDaySum);
 
             $now = now();
             $totalSeconds = $expiredAt->timestamp - $firstOrderAt;
@@ -267,7 +276,12 @@ class OrderService
             $cycleRatio = $totalSeconds > 0 ? $remainSeconds / $totalSeconds : 0;
 
             $plan = Plan::find($user->plan_id);
-            $totalTraffic = $plan?->transfer_enable * $orderMonthSum;
+            $trafficMultiplier = $orders->sum(function ($item) {
+                $period = PlanService::getPeriodKey($item->period);
+                $periodInfo = Plan::getAvailablePeriods()[$period] ?? null;
+                return $periodInfo['value'] ?? 0;
+            });
+            $totalTraffic = ($plan?->transfer_enable ?? 0) * $trafficMultiplier;
             $usedTraffic = Helper::transferToGB($user->u + $user->d);
             $remainTraffic = max(0, $totalTraffic - $usedTraffic);
             $trafficRatio = $totalTraffic > 0 ? $remainTraffic / $totalTraffic : 0;
@@ -374,12 +388,12 @@ class OrderService
         $timestamp = $timestamp < time() ? time() : $timestamp;
         $periodKey = PlanService::getPeriodKey($periodKey);
 
-        if (isset(self::STR_TO_TIME[$periodKey])) {
-            $months = self::STR_TO_TIME[$periodKey];
-            return Carbon::createFromTimestamp($timestamp)->addMonths($months)->timestamp;
+        if (!Plan::isValidPeriod($periodKey) || $periodKey === Plan::PERIOD_ONETIME || $periodKey === Plan::PERIOD_RESET_TRAFFIC) {
+            throw new ApiException('无效的套餐周期');
         }
 
-        throw new ApiException('无效的套餐周期');
+        $days = Plan::getPeriodDays($periodKey);
+        return Carbon::createFromTimestamp($timestamp)->addDays($days)->timestamp;
     }
 
     private function openEvent($eventId)

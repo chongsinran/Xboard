@@ -167,6 +167,8 @@ class RegisterService
             return [false, [500, __('Register failed')]];
         }
 
+        $userService->applyInviteRegistrationRewards($user);
+
         HookManager::call('user.register.after', $user);
 
         // 清除邮箱验证码

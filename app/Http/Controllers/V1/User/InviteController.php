@@ -10,6 +10,7 @@ use App\Models\CommissionLog;
 use App\Models\InviteCode;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\InviteRewardService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 
@@ -30,12 +31,20 @@ class InviteController extends Controller
     {
         $current = $request->input('current') ? $request->input('current') : 1;
         $pageSize = $request->input('page_size') >= 10 ? $request->input('page_size') : 10;
-        $builder = CommissionLog::where('invite_user_id', $request->user()->id)
+        $builder = CommissionLog::with('inviter:id,email')
+            ->where('invite_user_id', $request->user()->id)
             ->where('get_amount', '>', 0)
             ->orderBy('created_at', 'DESC');
         $total = $builder->count();
         $details = $builder->forPage($current, $pageSize)
             ->get();
+
+        foreach ($details as $detail) {
+            if ($detail->inviter) {
+                $detail->inviter_email = $detail->inviter->email;
+            }
+        }
+
         return response([
             'data' => ComissionLogResource::collection($details),
             'total' => $total
@@ -47,6 +56,16 @@ class InviteController extends Controller
         $commission_rate = admin_setting('invite_commission', 10);
         $user = User::find($request->user()->id)
                 ->load(['codes' => fn($query) => $query->where('status', 0)]);
+
+        // Easylink assumes an invite code already exists and reads codes[0].
+        if ($user && $user->codes->isEmpty()) {
+            $inviteCode = new InviteCode();
+            $inviteCode->user_id = $user->id;
+            $inviteCode->code = Helper::randomChar(8);
+            $inviteCode->save();
+            $user->load(['codes' => fn($query) => $query->where('status', 0)]);
+        }
+
         if ($user->commission_rate) {
             $commission_rate = $user->commission_rate;
         }
@@ -70,9 +89,16 @@ class InviteController extends Controller
             //可用佣金
             (int)$user->commission_balance
         ];
+        $registeredUsers = User::where('invite_user_id', $user->id)
+            ->orderBy('created_at', 'DESC')
+            ->get(['id', 'email', 'created_at']);
+        $inviteProgress = app(InviteRewardService::class)->getInviteProgress($user);
         $data = [
             'codes' => InviteCodeResource::collection($user->codes),
-            'stat' => $stat
+            'stat' => $stat,
+            'registered_users' => $registeredUsers,
+            'commission_freeze_balance' => 0,
+            'invite_progress' => $inviteProgress,
         ];
         return $this->success($data);
     }

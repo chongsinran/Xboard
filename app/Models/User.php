@@ -77,6 +77,8 @@ class User extends Authenticatable
         'commission_rate' => 'float',
         'next_reset_at' => 'timestamp',
         'last_reset_at' => 'timestamp',
+        'invite_valid_at' => 'timestamp',
+        'invite_paid_at' => 'timestamp',
     ];
     protected $hidden = ['password'];
 
@@ -138,6 +140,11 @@ class User extends Authenticatable
     public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'user_id', 'id');
+    }
+
+    public function personalNotices(): HasMany
+    {
+        return $this->hasMany(PersonalNotice::class, 'user_id', 'id');
     }
 
     public function parent(): BelongsTo

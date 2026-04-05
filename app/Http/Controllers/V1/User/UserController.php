@@ -11,6 +11,7 @@ use App\Models\Plan;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\Auth\LoginService;
+use App\Services\Auth\RegisterService;
 use App\Services\AuthService;
 use App\Services\Plugin\HookManager;
 use App\Services\UserService;
@@ -85,10 +86,44 @@ class UserController extends Controller
         return $this->success(true);
     }
 
+    /**
+     * Easylink compatibility: update password without requiring the old
+     * password, used for guest/device based accounts.
+     */
+    public function directChangePassword(Request $request)
+    {
+        $request->validate([
+            'new_password' => 'required|min:8',
+        ]);
+
+        $user = $request->user();
+        if (!$user) {
+            return $this->fail([400, __('The user does not exist')]);
+        }
+
+        $user->password = password_hash($request->input('new_password'), PASSWORD_DEFAULT);
+        $user->password_algo = null;
+        $user->password_salt = null;
+        if (!$user->save()) {
+            return $this->fail([400, __('Save failed')]);
+        }
+
+        return $this->success(true);
+    }
+
+    /**
+     * Easylink compatibility alias for setting a password on guest accounts.
+     */
+    public function setPassword(Request $request)
+    {
+        return $this->directChangePassword($request);
+    }
+
     public function info(Request $request)
     {
         $user = User::where('id', $request->user()->id)
             ->select([
+                'id',
                 'email',
                 'transfer_enable',
                 'last_login_at',
@@ -103,13 +138,16 @@ class UserController extends Controller
                 'discount',
                 'commission_rate',
                 'telegram_id',
-                'uuid'
+                'uuid',
+                'device_id',
+                'invite_user_id'
             ])
             ->first();
         if (!$user) {
             return $this->fail([400, __('The user does not exist')]);
         }
         $user['avatar_url'] = 'https://cdn.v2ex.com/gravatar/' . md5($user->email) . '?s=64&d=identicon';
+        $user['has_password'] = !str_ends_with((string) $user->email, '@example.com');
         return $this->success($user);
     }
 
@@ -183,6 +221,35 @@ class UserController extends Controller
         try {
             $user->update($updateData);
         } catch (\Exception $e) {
+            return $this->fail([400, __('Save failed')]);
+        }
+
+        return $this->success(true);
+    }
+
+    public function bindInviteCode(Request $request)
+    {
+        $request->validate([
+            'invite_token' => 'required',
+        ]);
+
+        $user = $request->user();
+        if (!$user) {
+            return $this->fail([400, __('The user does not exist')]);
+        }
+
+        if ($user->invite_user_id) {
+            return $this->success(true);
+        }
+
+        try {
+            $inviteUserId = app(RegisterService::class)->handleInviteCode($request->input('invite_token'));
+        } catch (\Throwable $e) {
+            return $this->fail([400, $e->getMessage()]);
+        }
+
+        $user->invite_user_id = $inviteUserId;
+        if (!$user->save()) {
             return $this->fail([400, __('Save failed')]);
         }
 

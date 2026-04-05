@@ -13,8 +13,10 @@ class PassportRoute
             'prefix' => 'passport'
         ], function ($router) {
             // Auth
+            $router->post('/auth/update_email', [AuthController::class, 'updateEmail']);
             $router->post('/auth/register', [AuthController::class, 'register']);
             $router->post('/auth/login', [AuthController::class, 'login']);
+            $router->post('/auth/loginWithDeviceId', [AuthController::class, 'loginWithDeviceId']);
             $router->get('/auth/token2Login', [AuthController::class, 'token2Login']);
             $router->post('/auth/forget', [AuthController::class, 'forget']);
             $router->post('/auth/getQuickLoginUrl', [AuthController::class, 'getQuickLoginUrl']);

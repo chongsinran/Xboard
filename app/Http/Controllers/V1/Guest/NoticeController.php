@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\V1\User;
+namespace App\Http\Controllers\V1\Guest;
 
 use App\Http\Controllers\Controller;
 use App\Models\Notice;
@@ -16,8 +16,7 @@ class NoticeController extends Controller
             ->orderBy('id', 'DESC')
             ->where('show', true);
         $total = $model->count();
-        $res = $model->forPage($current, $pageSize)
-            ->get();
+        $res = $model->forPage($current, $pageSize)->get();
         return response([
             'data' => $res,
             'total' => $total
