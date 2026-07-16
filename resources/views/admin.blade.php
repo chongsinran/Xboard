@@ -85,6 +85,7 @@
   <div id="notice-tag-filter-root"></div>
   <div id="personal-notice-panel-root"></div>
   <div id="device-analytics-panel-root"></div>
+  <div id="apple-iap-panel-root"></div>
   <script>
     (() => {
       const securePath = window.settings?.secure_path;
@@ -2440,6 +2441,433 @@
       window.addEventListener('hashchange', mount);
       window.addEventListener('popstate', mount);
       mount();
+    })();
+  </script>
+  <script>
+    (() => {
+      const securePath = window.settings?.secure_path;
+      const root = document.getElementById('apple-iap-panel-root');
+      if (!securePath || !root) return;
+
+      const isEnglish = (localStorage.getItem('i18nextLng') || 'zh-CN')
+        .toLowerCase()
+        .startsWith('en');
+      const t = isEnglish ? {
+        trigger: 'Apple IAP',
+        title: 'Apple In-App Purchases',
+        description: 'Choose the Xboard plan granted by the four BiLink App Store products.',
+        enable: 'Enable Apple IAP for non-mainland-China iOS users',
+        plan: 'Target Xboard plan',
+        choosePlan: 'Choose a plan',
+        products: 'App Store product mappings',
+        productId: 'Product ID',
+        period: 'Xboard period',
+        enabled: 'Enabled',
+        close: 'Close',
+        save: 'Save',
+        saving: 'Saving...',
+        loading: 'Loading...',
+        saved: 'Apple IAP settings saved.',
+        failed: 'Unable to load or save Apple IAP settings.',
+        unauthorized: 'Please log into the admin panel first.',
+        noPlans: 'No Xboard plans found.',
+        monthly: '1 month',
+        quarterly: '3 months',
+        halfYearly: '6 months',
+        yearly: '12 months',
+      } : {
+        trigger: 'Apple 内购',
+        title: 'Apple 应用内购买',
+        description: '选择四个 BiLink App Store 商品开通的 Xboard 套餐。',
+        enable: '为中国大陆以外的 iOS 用户启用 Apple 内购',
+        plan: '目标 Xboard 套餐',
+        choosePlan: '请选择套餐',
+        products: 'App Store 商品映射',
+        productId: '商品 ID',
+        period: 'Xboard 周期',
+        enabled: '启用',
+        close: '关闭',
+        save: '保存',
+        saving: '保存中...',
+        loading: '加载中...',
+        saved: 'Apple 内购设置已保存。',
+        failed: 'Apple 内购设置加载或保存失败。',
+        unauthorized: '请先登录管理后台。',
+        noPlans: '没有找到 Xboard 套餐。',
+        monthly: '1 个月',
+        quarterly: '3 个月',
+        halfYearly: '6 个月',
+        yearly: '12 个月',
+      };
+
+      const defaults = [
+        { product_id: 'com.bilink.bilinklink.pass.1month', period: 'monthly', enabled: true, sort: 1 },
+        { product_id: 'com.bilink.bilinklink.pass.3months', period: 'quarterly', enabled: true, sort: 2 },
+        { product_id: 'com.bilink.bilinklink.pass.6months', period: 'half_yearly', enabled: true, sort: 3 },
+        { product_id: 'com.bilink.bilinklink.pass.12months', period: 'yearly', enabled: true, sort: 4 },
+      ];
+      const periodLabels = {
+        monthly: t.monthly,
+        quarterly: t.quarterly,
+        half_yearly: t.halfYearly,
+        yearly: t.yearly,
+      };
+
+      root.innerHTML = `
+        <style>
+          .apple-iap-trigger {
+            display: none;
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: #fff;
+            background: #111827;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, .16);
+            font: 600 14px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            cursor: pointer;
+          }
+          .apple-iap-trigger.mounted { display: inline-flex; align-items: center; }
+          .apple-iap-plan-entry {
+            margin: 0 0 16px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: #fff;
+          }
+          .apple-iap-plan-entry-copy { min-width: 0; }
+          .apple-iap-plan-entry-copy strong {
+            display: block;
+            color: #111827;
+            font-size: 14px;
+            line-height: 1.4;
+          }
+          .apple-iap-plan-entry-copy span {
+            display: block;
+            margin-top: 4px;
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.45;
+          }
+          .apple-iap-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(15, 23, 42, .48);
+          }
+          .apple-iap-backdrop.open { display: flex; }
+          .apple-iap-card {
+            width: min(680px, 100%);
+            max-height: calc(100vh - 48px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-radius: 18px;
+            background: #fff;
+            box-shadow: 0 28px 80px rgba(15, 23, 42, .32);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          }
+          .apple-iap-header { padding: 20px 22px 14px; border-bottom: 1px solid #e5e7eb; }
+          .apple-iap-header h2 { margin: 0; color: #111827; font-size: 21px; }
+          .apple-iap-header p { margin: 8px 0 0; color: #6b7280; font-size: 14px; line-height: 1.5; }
+          .apple-iap-form { min-height: 0; display: flex; flex: 1; flex-direction: column; }
+          .apple-iap-body { min-height: 0; overflow-y: auto; padding: 20px 22px; display: grid; gap: 18px; }
+          .apple-iap-switch { display: flex; align-items: center; gap: 10px; color: #111827; font-size: 14px; font-weight: 600; }
+          .apple-iap-field { display: grid; gap: 7px; }
+          .apple-iap-field > label, .apple-iap-products-title { color: #374151; font-size: 13px; font-weight: 700; }
+          .apple-iap-field select, .apple-iap-field input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #d1d5db;
+            border-radius: 11px;
+            padding: 10px 12px;
+            color: #111827;
+            background: #fff;
+            font-size: 14px;
+          }
+          .apple-iap-products { display: grid; gap: 10px; }
+          .apple-iap-product {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 120px 72px;
+            gap: 10px;
+            align-items: end;
+            padding: 13px;
+            border: 1px solid #e5e7eb;
+            border-radius: 13px;
+            background: #f9fafb;
+          }
+          .apple-iap-product-period { padding-bottom: 11px; color: #374151; font-size: 13px; font-weight: 600; }
+          .apple-iap-product-enabled { padding-bottom: 10px; display: flex; justify-content: center; }
+          .apple-iap-footer {
+            padding: 15px 22px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-top: 1px solid #e5e7eb;
+          }
+          .apple-iap-status { min-height: 18px; color: #2563eb; font-size: 13px; }
+          .apple-iap-actions { display: flex; gap: 9px; }
+          .apple-iap-actions button { border-radius: 10px; padding: 9px 14px; font-size: 14px; font-weight: 600; cursor: pointer; }
+          .apple-iap-close { border: 1px solid #d1d5db; color: #111827; background: #fff; }
+          .apple-iap-save { border: 1px solid #111827; color: #fff; background: #111827; }
+          @media (max-width: 640px) {
+            .apple-iap-product { grid-template-columns: minmax(0, 1fr) 82px; }
+            .apple-iap-product-period { grid-column: 1; padding-bottom: 0; }
+            .apple-iap-product-enabled { grid-column: 2; grid-row: 1 / span 2; align-self: center; padding: 0; }
+            .apple-iap-plan-entry { align-items: flex-start; flex-direction: column; }
+          }
+        </style>
+        <button class="apple-iap-trigger" type="button">${t.trigger}</button>
+        <div class="apple-iap-backdrop" role="dialog" aria-modal="true" aria-label="${t.title}">
+          <div class="apple-iap-card">
+            <div class="apple-iap-header">
+              <h2>${t.title}</h2>
+              <p>${t.description}</p>
+            </div>
+            <form class="apple-iap-form">
+              <div class="apple-iap-body">
+                <label class="apple-iap-switch">
+                  <input name="apple_iap_enable" type="checkbox" />
+                  <span>${t.enable}</span>
+                </label>
+                <div class="apple-iap-field">
+                  <label for="apple_iap_plan_id">${t.plan}</label>
+                  <select id="apple_iap_plan_id" name="apple_iap_plan_id">
+                    <option value="0">${t.choosePlan}</option>
+                  </select>
+                </div>
+                <div class="apple-iap-products">
+                  <div class="apple-iap-products-title">${t.products}</div>
+                  ${defaults.map((product, index) => `
+                    <div class="apple-iap-product" data-index="${index}">
+                      <div class="apple-iap-field">
+                        <label>${t.productId}</label>
+                        <input name="product_id_${index}" type="text" value="${product.product_id}" />
+                      </div>
+                      <div class="apple-iap-product-period">${periodLabels[product.period]}</div>
+                      <label class="apple-iap-product-enabled" title="${t.enabled}">
+                        <input name="product_enabled_${index}" type="checkbox" checked />
+                      </label>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+              <div class="apple-iap-footer">
+                <div class="apple-iap-status"></div>
+                <div class="apple-iap-actions">
+                  <button class="apple-iap-close" type="button">${t.close}</button>
+                  <button class="apple-iap-save" type="submit">${t.save}</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+
+      const trigger = root.querySelector('.apple-iap-trigger');
+      const backdrop = root.querySelector('.apple-iap-backdrop');
+      const form = root.querySelector('.apple-iap-form');
+      const planSelect = form.elements.apple_iap_plan_id;
+      const closeButton = root.querySelector('.apple-iap-close');
+      const saveButton = root.querySelector('.apple-iap-save');
+      const status = root.querySelector('.apple-iap-status');
+      let planEntry = null;
+
+      const token = () => {
+        const stores = [localStorage, sessionStorage];
+        for (const store of stores) {
+          for (let i = 0; i < store.length; i += 1) {
+            const key = store.key(i);
+            if (!key || !key.toLowerCase().endsWith('access_token')) continue;
+            const raw = store.getItem(key);
+            try {
+              const parsed = JSON.parse(raw);
+              const value = typeof parsed === 'string'
+                ? parsed
+                : parsed?.value?.value || parsed?.value;
+              if (typeof value === 'string' && value) return value;
+            } catch (_) {
+              if (raw) return raw;
+            }
+          }
+        }
+        return '';
+      };
+
+      const headers = (extra = {}) => {
+        const value = token();
+        return {
+          'Content-Language': localStorage.getItem('i18nextLng') || 'zh-CN',
+          'X-Requested-With': 'XMLHttpRequest',
+          ...(value ? { Authorization: value.startsWith('Bearer ') ? value : `Bearer ${value}` } : {}),
+          ...extra,
+        };
+      };
+      const setStatus = (message, color = '#2563eb') => {
+        status.textContent = message || '';
+        status.style.color = color;
+      };
+      const escapeHtml = (value) => String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
+
+      const open = async () => {
+        backdrop.classList.add('open');
+        setStatus(t.loading);
+        if (!token()) {
+          setStatus(t.unauthorized, '#dc2626');
+          return;
+        }
+        try {
+          const [configResponse, plansResponse] = await Promise.all([
+            fetch(`/api/v2/${securePath}/config/fetch?key=apple_iap`, {
+              headers: headers(),
+              credentials: 'same-origin',
+            }),
+            fetch(`/api/v2/${securePath}/plan/fetch`, {
+              headers: headers(),
+              credentials: 'same-origin',
+            }),
+          ]);
+          const configPayload = await configResponse.json();
+          const plansPayload = await plansResponse.json();
+          if (!configResponse.ok || !plansResponse.ok) throw new Error('load failed');
+
+          const settings = configPayload?.data?.apple_iap || {};
+          const plans = Array.isArray(plansPayload?.data) ? plansPayload.data : [];
+          planSelect.innerHTML = `<option value="0">${plans.length ? t.choosePlan : t.noPlans}</option>`
+            + plans.map((plan) =>
+              `<option value="${Number(plan.id)}">${escapeHtml(plan.name)} (#${Number(plan.id)})</option>`
+            ).join('');
+          form.elements.apple_iap_enable.checked = Boolean(settings.apple_iap_enable);
+          planSelect.value = String(settings.apple_iap_plan_id || 0);
+
+          const products = Array.isArray(settings.apple_iap_products)
+            ? settings.apple_iap_products
+            : defaults;
+          defaults.forEach((fallback, index) => {
+            const product = products.find((item) => item.period === fallback.period) || fallback;
+            form.elements[`product_id_${index}`].value = product.product_id || fallback.product_id;
+            form.elements[`product_enabled_${index}`].checked =
+              product.enabled === true || product.enabled === 1 || product.enabled === '1';
+          });
+          setStatus('');
+        } catch (_) {
+          setStatus(t.failed, '#dc2626');
+        }
+      };
+
+      trigger.addEventListener('click', open);
+      closeButton.addEventListener('click', () => backdrop.classList.remove('open'));
+      backdrop.addEventListener('click', (event) => {
+        if (event.target === backdrop) backdrop.classList.remove('open');
+      });
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        saveButton.disabled = true;
+        saveButton.textContent = t.saving;
+        setStatus('');
+        const products = defaults.map((item, index) => ({
+          product_id: form.elements[`product_id_${index}`].value.trim(),
+          period: item.period,
+          enabled: form.elements[`product_enabled_${index}`].checked,
+          sort: item.sort,
+        }));
+        try {
+          const response = await fetch(`/api/v2/${securePath}/config/save`, {
+            method: 'POST',
+            headers: headers({ 'Content-Type': 'application/json' }),
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              apple_iap_enable: form.elements.apple_iap_enable.checked,
+              apple_iap_plan_id: Number(planSelect.value || 0),
+              apple_iap_products: products,
+            }),
+          });
+          const payload = await response.json();
+          if (!response.ok || payload?.data === false) throw new Error('save failed');
+          setStatus(t.saved, '#16a34a');
+        } catch (_) {
+          setStatus(t.failed, '#dc2626');
+        } finally {
+          saveButton.disabled = false;
+          saveButton.textContent = t.save;
+        }
+      });
+
+      const isPlanPage = () => {
+        const url = `${location.pathname}${location.hash}`.toLowerCase();
+        if (url.includes('/plan')) return true;
+        return Array.from(document.querySelectorAll('h1, h2, h3, [role="heading"]'))
+          .some((node) => {
+            const text = (node.textContent || '').trim();
+            return text === 'Subscription Plans'
+              || text === 'Plan Management'
+              || text === '订阅计划'
+              || text === '套餐管理';
+          });
+      };
+
+      const mountOnPlanPage = () => {
+        if (!isPlanPage()) {
+          planEntry?.remove();
+          planEntry = null;
+          trigger.classList.remove('mounted');
+          root.appendChild(trigger);
+          return;
+        }
+        if (planEntry?.isConnected) return;
+
+        const headings = Array.from(document.querySelectorAll(
+          'h1, h2, h3, [role="heading"], .ant-card-head-title, .ant-typography',
+        ));
+        const heading = headings.find((node) => {
+          const text = (node.textContent || '').trim();
+          return text === 'Subscription Plans'
+            || text === 'Plan Management'
+            || text === '订阅计划'
+            || text === '套餐管理';
+        });
+        const content = heading?.closest(
+          '.ant-card, main, [class*="content"], [class*="page"]',
+        ) || document.querySelector('main');
+        if (!content) return;
+
+        const insertionTarget = content.querySelector(
+          '.ant-card-body, [class*="card-content"], [class*="table"]',
+        ) || content;
+        planEntry = document.createElement('div');
+        planEntry.className = 'apple-iap-plan-entry';
+        planEntry.innerHTML = `
+          <div class="apple-iap-plan-entry-copy">
+            <strong>${t.title}</strong>
+            <span>${t.description}</span>
+          </div>
+        `;
+        trigger.classList.add('mounted');
+        planEntry.appendChild(trigger);
+        insertionTarget.prepend(planEntry);
+      };
+
+      let mountTimer = null;
+      const observer = new MutationObserver(() => {
+        clearTimeout(mountTimer);
+        mountTimer = setTimeout(mountOnPlanPage, 160);
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.addEventListener('hashchange', mountOnPlanPage);
+      window.addEventListener('popstate', mountOnPlanPage);
+      mountOnPlanPage();
     })();
   </script>
 </body>

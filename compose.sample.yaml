@@ -1,11 +1,21 @@
 services:
   web:
     image: ghcr.io/cedar2025/xboard:new
+    environment:
+      - docker=true
+      # Apple App Store Server API credentials for BiLink In-App Purchases.
+      # Replace the placeholder values before deployment.
+      - APPLE_IAP_BUNDLE_ID=com.easylink.easylink
+      - APPLE_IAP_ISSUER_ID=YOUR_APP_STORE_CONNECT_ISSUER_ID
+      - APPLE_IAP_KEY_ID=YOUR_APP_STORE_CONNECT_KEY_ID
+      - APPLE_IAP_PRIVATE_KEY_PATH=/run/secrets/apple_iap_key.p8
+      # Enable only when every request reaches Xboard through trusted Cloudflare.
+      - APPLE_IAP_TRUST_CF_COUNTRY_HEADER=false
     volumes:
       - redis-data:/data
       - ./:/www/
-    environment:
-      - docker=true
+      # Put the App Store Connect private key at ./secrets/AuthKey.p8.
+      - ./secrets/AuthKey.p8:/run/secrets/apple_iap_key.p8:ro
     depends_on:
       - redis
     network_mode: host
