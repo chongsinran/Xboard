@@ -193,6 +193,11 @@ class ConfigController extends Controller
                 'android_version' => admin_setting('android_version', ''),
                 'android_download_url' => admin_setting('android_download_url', '')
             ],
+            'apple_iap' => [
+                'apple_iap_enable' => (bool) admin_setting('apple_iap_enable', false),
+                'apple_iap_plan_id' => (int) admin_setting('apple_iap_plan_id', 0),
+                'apple_iap_products' => admin_setting('apple_iap_products', config('apple_iap.products', [])),
+            ],
             'safe' => [
                 'email_verify' => (bool) admin_setting('email_verify', 0),
                 'safe_mode_enable' => (bool) admin_setting('safe_mode_enable', 0),

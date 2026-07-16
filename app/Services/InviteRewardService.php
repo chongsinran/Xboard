@@ -324,7 +324,7 @@ class InviteRewardService
             ],
             [
                 'key' => 'B',
-                'title' => '易連分享官',
+                'title' => '必连分享官',
                 'badge' => 'Silver',
                 'mode' => 'milestone',
                 'enabled' => (bool) admin_setting('invite_level_b_enable', 1),
@@ -338,7 +338,7 @@ class InviteRewardService
             ],
             [
                 'key' => 'C',
-                'title' => '易連推廣大使',
+                'title' => '必连推廣大使',
                 'badge' => 'Gold',
                 'mode' => 'milestone',
                 'enabled' => (bool) admin_setting('invite_level_c_enable', 1),
@@ -352,7 +352,7 @@ class InviteRewardService
             ],
             [
                 'key' => 'D',
-                'title' => '易連合夥人',
+                'title' => '必连合夥人',
                 'badge' => 'Platinum',
                 'mode' => 'milestone',
                 'enabled' => (bool) admin_setting('invite_level_d_enable', 1),
@@ -362,7 +362,7 @@ class InviteRewardService
                 'reward_value' => (int) admin_setting('invite_level_d_reward_value', 1),
                 'reward_key' => 'invite_level_d_milestone',
                 'requirement' => '成功邀請 100 位有效用戶，其中包含 30 位付費用戶',
-                'reward_description' => '享有終身免費使用易連 VPN 的權利',
+                'reward_description' => '享有終身免費使用必连 VPN 的權利',
             ],
         ];
     }

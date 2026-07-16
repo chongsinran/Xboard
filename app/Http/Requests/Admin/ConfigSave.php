@@ -105,6 +105,13 @@ class ConfigSave extends FormRequest
         'macos_download_url' => '',
         'android_version' => '',
         'android_download_url' => '',
+        'apple_iap_enable' => 'boolean',
+        'apple_iap_plan_id' => 'integer|min:0',
+        'apple_iap_products' => 'array|size:4',
+        'apple_iap_products.*.product_id' => 'required|string|max:191|distinct',
+        'apple_iap_products.*.period' => 'required|in:monthly,quarterly,half_yearly,yearly',
+        'apple_iap_products.*.enabled' => 'required|boolean',
+        'apple_iap_products.*.sort' => 'required|integer|min:0',
         // safe
         'email_whitelist_enable' => 'boolean',
         'email_whitelist_suffix' => 'nullable|array',

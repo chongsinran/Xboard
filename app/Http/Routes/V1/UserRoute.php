@@ -16,6 +16,7 @@ use App\Http\Controllers\V1\User\StatController;
 use App\Http\Controllers\V1\User\TelegramController;
 use App\Http\Controllers\V1\User\TicketController;
 use App\Http\Controllers\V1\User\UserController;
+use App\Http\Controllers\V1\User\AppleIapController;
 use Illuminate\Contracts\Routing\Registrar;
 
 class UserRoute
@@ -50,6 +51,8 @@ class UserRoute
             $router->get('/order/fetch', [OrderController::class, 'fetch']);
             $router->get('/order/getPaymentMethod', [OrderController::class, 'getPaymentMethod']);
             $router->post('/order/cancel', [OrderController::class, 'cancel']);
+            $router->get('/iap/config', [AppleIapController::class, 'config']);
+            $router->post('/iap/verify', [AppleIapController::class, 'verify']);
             // Plan
             $router->get('/plan/fetch', [PlanController::class, 'fetch']);
             // Invite
