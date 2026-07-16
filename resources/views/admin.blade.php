@@ -2813,6 +2813,7 @@
             const text = (node.textContent || '').trim();
             return text === 'Subscription Plans'
               || text === 'Plan Management'
+              || text === '订阅套餐'
               || text === '订阅计划'
               || text === '套餐管理';
           });
@@ -2835,17 +2836,16 @@
           const text = (node.textContent || '').trim();
           return text === 'Subscription Plans'
             || text === 'Plan Management'
+            || text === '订阅套餐'
             || text === '订阅计划'
             || text === '套餐管理';
         });
-        const content = heading?.closest(
-          '.ant-card, main, [class*="content"], [class*="page"]',
-        ) || document.querySelector('main');
+        if (!heading) return;
+        const headingSection = heading.parentElement;
+        const content = heading.closest('main, [class*="content"], [class*="page"]')
+          || document.querySelector('main');
         if (!content) return;
 
-        const insertionTarget = content.querySelector(
-          '.ant-card-body, [class*="card-content"], [class*="table"]',
-        ) || content;
         planEntry = document.createElement('div');
         planEntry.className = 'apple-iap-plan-entry';
         planEntry.innerHTML = `
@@ -2856,7 +2856,11 @@
         `;
         trigger.classList.add('mounted');
         planEntry.appendChild(trigger);
-        insertionTarget.prepend(planEntry);
+        if (headingSection?.parentElement) {
+          headingSection.insertAdjacentElement('afterend', planEntry);
+        } else {
+          content.prepend(planEntry);
+        }
       };
 
       let mountTimer = null;
