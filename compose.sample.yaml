@@ -19,7 +19,9 @@ services:
     depends_on:
       - redis
     network_mode: host
-    command: php artisan octane:start --port=7001 --host=0.0.0.0
+    command: >
+      sh -lc "php scripts/patch_ios_admin_bundle.php &&
+      exec php artisan octane:start --port=7001 --host=0.0.0.0"
     restart: always
   horizon:
     image: ghcr.io/cedar2025/xboard:new
