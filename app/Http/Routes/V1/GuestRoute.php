@@ -2,6 +2,7 @@
 namespace App\Http\Routes\V1;
 
 use App\Http\Controllers\V1\Guest\CommController;
+use App\Http\Controllers\V1\Guest\AppController;
 use App\Http\Controllers\V1\Guest\NoticeController;
 use App\Http\Controllers\V1\Guest\PaymentController;
 use App\Http\Controllers\V1\Guest\PlanController;
@@ -15,6 +16,8 @@ class GuestRoute
         $router->group([
             'prefix' => 'guest'
         ], function ($router) {
+            // Public application download links
+            $router->get('/app/downloads', [AppController::class, 'downloads']);
             // Plan
             $router->get('/plan/fetch', [PlanController::class, 'fetch']);
             // Notice

@@ -190,6 +190,8 @@ class ConfigController extends Controller
                 'windows_download_url' => admin_setting('windows_download_url', ''),
                 'macos_version' => admin_setting('macos_version', ''),
                 'macos_download_url' => admin_setting('macos_download_url', ''),
+                'ios_version' => admin_setting('ios_version', ''),
+                'ios_download_url' => admin_setting('ios_download_url', ''),
                 'android_version' => admin_setting('android_version', ''),
                 'android_download_url' => admin_setting('android_download_url', '')
             ],

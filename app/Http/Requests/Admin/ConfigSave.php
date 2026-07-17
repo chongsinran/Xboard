@@ -103,6 +103,8 @@ class ConfigSave extends FormRequest
         'windows_download_url' => '',
         'macos_version' => '',
         'macos_download_url' => '',
+        'ios_version' => '',
+        'ios_download_url' => '',
         'android_version' => '',
         'android_download_url' => '',
         'apple_iap_enable' => 'boolean',

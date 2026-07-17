@@ -2874,6 +2874,170 @@
       mountOnPlanPage();
     })();
   </script>
+  <script>
+    (() => {
+      const securePath = String(window.settings?.secure_path || '').replace(/^\/+|\/+$/g, '');
+      let mountedCard = null;
+      let saveTimer = null;
+
+      const accessToken = () => {
+        for (const store of [localStorage, sessionStorage]) {
+          for (let index = 0; index < store.length; index += 1) {
+            const key = store.key(index);
+            if (!key || !key.toLowerCase().endsWith('access_token')) continue;
+            const raw = store.getItem(key);
+            try {
+              const parsed = JSON.parse(raw);
+              const value = typeof parsed === 'string'
+                ? parsed
+                : parsed?.value?.value || parsed?.value;
+              if (typeof value === 'string' && value) return value;
+            } catch (_) {
+              if (raw) return raw;
+            }
+          }
+        }
+        return '';
+      };
+
+      const requestHeaders = (extra = {}) => {
+        const token = accessToken();
+        return {
+          'Content-Language': localStorage.getItem('i18nextLng') || 'zh-CN',
+          'X-Requested-With': 'XMLHttpRequest',
+          ...(token ? { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` } : {}),
+          ...extra,
+        };
+      };
+
+      const isAppSettingsPage = () => {
+        const url = `${location.pathname}${location.hash}`.toLowerCase();
+        if (url.includes('/settings/app')) return true;
+        return Array.from(document.querySelectorAll('h1, h2, h3, [role="heading"]'))
+          .some((node) => ['APP设置', '应用设置', 'Application Settings']
+            .includes((node.textContent || '').trim()));
+      };
+
+      const save = async (card) => {
+        const status = card.querySelector('.ios-app-status');
+        status.textContent = '正在保存…';
+        try {
+          const response = await fetch(`/api/v2/${securePath}/config/save`, {
+            method: 'POST',
+            headers: requestHeaders({ 'Content-Type': 'application/json' }),
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              ios_version: card.querySelector('[name="ios_version"]').value.trim(),
+              ios_download_url: card.querySelector('[name="ios_download_url"]').value.trim(),
+            }),
+          });
+          if (!response.ok) throw new Error('save failed');
+          status.textContent = '已保存';
+          status.style.color = '#16a34a';
+        } catch (_) {
+          status.textContent = '保存失败';
+          status.style.color = '#dc2626';
+        }
+      };
+
+      const mount = async () => {
+        if (!isAppSettingsPage()) {
+          mountedCard?.remove();
+          mountedCard = null;
+          return;
+        }
+        if (mountedCard?.isConnected) return;
+
+        const headings = Array.from(document.querySelectorAll('h1, h2, h3, [role="heading"]'));
+        const heading = headings.find((node) => ['APP设置', '应用设置', 'Application Settings']
+          .includes((node.textContent || '').trim()));
+        const content = heading?.closest('main, [class*="content"], [class*="page"]')
+          || document.querySelector('main');
+        if (!content) return;
+
+        const card = document.createElement('section');
+        card.className = 'ios-app-settings';
+        card.innerHTML = `
+          <style>
+            .ios-app-settings {
+              margin-top: 18px;
+              padding: 20px;
+              display: grid;
+              gap: 18px;
+              border: 1px solid hsl(var(--border, 214.3 31.8% 91.4%));
+              border-radius: 12px;
+              background: hsl(var(--card, 0 0% 100%));
+              color: hsl(var(--card-foreground, 222.2 84% 4.9%));
+            }
+            .ios-app-title { margin: 0; font-size: 16px; font-weight: 600; }
+            .ios-app-description { margin: 5px 0 0; color: #64748b; font-size: 13px; }
+            .ios-app-field { display: grid; gap: 7px; }
+            .ios-app-field label { font-size: 14px; font-weight: 500; }
+            .ios-app-field input {
+              min-height: 40px;
+              padding: 8px 12px;
+              border: 1px solid #d1d5db;
+              border-radius: 8px;
+              color: inherit;
+              background: transparent;
+              font: inherit;
+            }
+            .ios-app-field small, .ios-app-status { color: #64748b; font-size: 12px; }
+            .ios-app-status { min-height: 16px; text-align: right; }
+          </style>
+          <div>
+            <h3 class="ios-app-title">iOS</h3>
+            <p class="ios-app-description">设置 iPhone 和 iPad 客户端的版本与下载地址。</p>
+          </div>
+          <div class="ios-app-field">
+            <label for="ios_version">iOS 版本</label>
+            <input id="ios_version" name="ios_version" type="text" placeholder="例如 1.0.0" />
+            <small>网站会在 iPhone 或 iPad 上显示此版本。</small>
+          </div>
+          <div class="ios-app-field">
+            <label for="ios_download_url">iOS 下载地址</label>
+            <input id="ios_download_url" name="ios_download_url" type="url" placeholder="https://apps.apple.com/..." />
+            <small>可填写 App Store、TestFlight 或企业分发链接。</small>
+          </div>
+          <div class="ios-app-status"></div>
+        `;
+        content.appendChild(card);
+        mountedCard = card;
+
+        card.querySelectorAll('input').forEach((input) => {
+          input.addEventListener('input', () => {
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => save(card), 800);
+          });
+        });
+
+        try {
+          const response = await fetch(`/api/v2/${securePath}/config/fetch?key=app`, {
+            headers: requestHeaders(),
+            credentials: 'same-origin',
+          });
+          const payload = await response.json();
+          const settings = payload?.data?.app || {};
+          card.querySelector('[name="ios_version"]').value = settings.ios_version || '';
+          card.querySelector('[name="ios_download_url"]').value = settings.ios_download_url || '';
+        } catch (_) {
+          const status = card.querySelector('.ios-app-status');
+          status.textContent = '载入 iOS 设置失败';
+          status.style.color = '#dc2626';
+        }
+      };
+
+      let mountTimer = null;
+      const observer = new MutationObserver(() => {
+        clearTimeout(mountTimer);
+        mountTimer = setTimeout(mount, 160);
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.addEventListener('hashchange', mount);
+      window.addEventListener('popstate', mount);
+      mount();
+    })();
+  </script>
 </body>
 
 </html>
