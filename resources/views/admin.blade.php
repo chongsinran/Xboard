@@ -2912,10 +2912,15 @@
 
       const isAppSettingsPage = () => {
         const url = `${location.pathname}${location.hash}`.toLowerCase();
-        if (url.includes('/settings/app')) return true;
+        if (document.querySelector('input[name="windows_version"], input[name="android_download_url"]')) {
+          return true;
+        }
+        if (url.includes('/settings/app') || url.includes('/setting/app')) return true;
         return Array.from(document.querySelectorAll('h1, h2, h3, [role="heading"]'))
-          .some((node) => ['APP设置', '应用设置', 'Application Settings']
-            .includes((node.textContent || '').trim()));
+          .some((node) => {
+            const title = (node.textContent || '').trim().toLowerCase();
+            return ['app设置', '应用设置', 'application settings', 'app settings'].includes(title);
+          });
       };
 
       const save = async (card) => {
@@ -2948,10 +2953,17 @@
         }
         if (mountedCard?.isConnected) return;
 
+        const existingAppInput = document.querySelector(
+          'input[name="android_download_url"], input[name="windows_version"]',
+        );
         const headings = Array.from(document.querySelectorAll('h1, h2, h3, [role="heading"]'));
-        const heading = headings.find((node) => ['APP设置', '应用设置', 'Application Settings']
-          .includes((node.textContent || '').trim()));
-        const content = heading?.closest('main, [class*="content"], [class*="page"]')
+        const heading = headings.find((node) => {
+          const title = (node.textContent || '').trim().toLowerCase();
+          return ['app设置', '应用设置', 'application settings', 'app settings'].includes(title);
+        });
+        const content = existingAppInput?.closest('form')
+          || existingAppInput?.parentElement?.parentElement?.parentElement?.parentElement
+          || heading?.closest('main, [class*="content"], [class*="page"]')
           || document.querySelector('main');
         if (!content) return;
 
