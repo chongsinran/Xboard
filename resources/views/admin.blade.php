@@ -63,10 +63,10 @@
       <link rel="stylesheet" crossorigin href="/assets/admin/{{ $css }}" />
     @endforeach
     @foreach($locales as $locale)
-      <script src="/assets/admin/{{ $locale }}"></script>
+      <script src="/assets/admin/{{ $locale }}?v={{ filemtime(public_path('assets/admin/' . $locale)) }}"></script>
     @endforeach
     @foreach($scripts as $js)
-      <script type="module" crossorigin src="/assets/admin/{{ $js }}"></script>
+      <script type="module" crossorigin src="/assets/admin/{{ $js }}?v={{ filemtime(public_path('assets/admin/' . $js)) }}"></script>
     @endforeach
   @else
     {{-- Fallback: hardcoded paths for backward compatibility --}}
