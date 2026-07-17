@@ -23,9 +23,37 @@ if (!bundle.includes('ios_version:""')) {
   );
 }
 
-if (!bundle.includes('e("app.ios.version.title")')) {
+const iosFieldMarker = 'Q.jsx(Uy,{control:r.control,name:"ios_version"';
+const androidFieldMarker =
+  'Q.jsx(Uy,{control:r.control,name:"android_version"';
+const iosFieldStarts = [];
+let iosSearchFrom = 0;
+while ((iosSearchFrom = bundle.indexOf(iosFieldMarker, iosSearchFrom)) !== -1) {
+  iosFieldStarts.push(iosSearchFrom);
+  iosSearchFrom += iosFieldMarker.length;
+}
+if (iosFieldStarts.length > 1) {
   const androidStart = bundle.indexOf(
-    'Q.jsx(Uy,{control:r.control,name:"android_version"',
+    androidFieldMarker,
+    iosFieldStarts.at(-1),
+  );
+  if (androidStart === -1) {
+    throw new Error("Unable to locate Android fields after duplicate iOS fields.");
+  }
+  const firstIosBlock = bundle.slice(
+    iosFieldStarts[0],
+    iosFieldStarts[1] - 1,
+  );
+  bundle =
+    bundle.slice(0, iosFieldStarts[0]) +
+    firstIosBlock +
+    "," +
+    bundle.slice(androidStart);
+}
+
+if (!bundle.includes(iosFieldMarker)) {
+  const androidStart = bundle.indexOf(
+    androidFieldMarker,
   );
   const androidEnd = bundle.indexOf(',t&&Q.jsx("div"', androidStart);
   if (androidStart === -1 || androidEnd === -1) {
@@ -38,6 +66,22 @@ if (!bundle.includes('e("app.ios.version.title")')) {
     iosFields +
     "," +
     bundle.slice(androidStart);
+}
+
+const translationFallbacks = {
+  'e("app.ios.version.title")':
+    'e("app.ios.version.title",{defaultValue:"iOS版本"})',
+  'e("app.ios.version.description")':
+    'e("app.ios.version.description",{defaultValue:"iPhone和iPad客户端当前版本号"})',
+  'e("app.ios.download.title")':
+    'e("app.ios.download.title",{defaultValue:"iOS下载地址"})',
+  'e("app.ios.download.description")':
+    'e("app.ios.download.description",{defaultValue:"App Store、TestFlight或企业分发链接"})',
+};
+for (const [translationCall, fallbackCall] of Object.entries(
+  translationFallbacks,
+)) {
+  bundle = bundle.replaceAll(translationCall, fallbackCall);
 }
 
 fs.writeFileSync(bundlePath, bundle);
