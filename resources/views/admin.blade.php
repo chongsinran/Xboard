@@ -2915,6 +2915,14 @@
         if (document.querySelector('input[name="windows_version"], input[name="android_download_url"]')) {
           return true;
         }
+        const visibleLabels = Array.from(document.querySelectorAll('label, p, span, div'))
+          .map((node) => (node.textContent || '').trim());
+        if (
+          visibleLabels.includes('Windows版本') &&
+          visibleLabels.includes('Android下载地址')
+        ) {
+          return true;
+        }
         if (url.includes('/settings/app') || url.includes('/setting/app')) return true;
         return Array.from(document.querySelectorAll('h1, h2, h3, [role="heading"]'))
           .some((node) => {
@@ -2956,12 +2964,20 @@
         const existingAppInput = document.querySelector(
           'input[name="android_download_url"], input[name="windows_version"]',
         );
+        const visibleNodes = Array.from(document.querySelectorAll('label, p, span, div'));
+        const androidDownloadLabel = visibleNodes.find(
+          (node) => (node.textContent || '').trim() === 'Android下载地址',
+        );
+        const androidField = androidDownloadLabel?.closest(
+          '[data-slot="form-item"], .space-y-2, .space-y-1, fieldset',
+        ) || androidDownloadLabel?.parentElement;
         const headings = Array.from(document.querySelectorAll('h1, h2, h3, [role="heading"]'));
         const heading = headings.find((node) => {
           const title = (node.textContent || '').trim().toLowerCase();
           return ['app设置', '应用设置', 'application settings', 'app settings'].includes(title);
         });
-        const content = existingAppInput?.closest('form')
+        const content = androidField?.parentElement
+          || existingAppInput?.closest('form')
           || existingAppInput?.parentElement?.parentElement?.parentElement?.parentElement
           || heading?.closest('main, [class*="content"], [class*="page"]')
           || document.querySelector('main');
@@ -3013,7 +3029,11 @@
           </div>
           <div class="ios-app-status"></div>
         `;
-        content.appendChild(card);
+        if (androidField?.parentElement === content) {
+          androidField.insertAdjacentElement('afterend', card);
+        } else {
+          content.appendChild(card);
+        }
         mountedCard = card;
 
         card.querySelectorAll('input').forEach((input) => {
