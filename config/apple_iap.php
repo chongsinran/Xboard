@@ -3,7 +3,7 @@
 use App\Models\Plan;
 
 return [
-    'bundle_id' => env('APPLE_IAP_BUNDLE_ID', 'com.easylink.easylink'),
+    'bundle_id' => env('APPLE_IAP_BUNDLE_ID', 'com.bilink.bilinklink.pass'),
     'issuer_id' => env('APPLE_IAP_ISSUER_ID'),
     'key_id' => env('APPLE_IAP_KEY_ID'),
     'private_key' => env('APPLE_IAP_PRIVATE_KEY'),
@@ -17,19 +17,19 @@ return [
             'sort' => 1,
         ],
         [
-            'product_id' => 'com.bilink.bilinklink.pass.3months',
+            'product_id' => 'com.bilink.bilinklink.pass.3month',
             'period' => Plan::PERIOD_QUARTERLY,
             'enabled' => true,
             'sort' => 2,
         ],
         [
-            'product_id' => 'com.bilink.bilinklink.pass.6months',
+            'product_id' => 'com.bilink.bilinklink.pass.6month',
             'period' => Plan::PERIOD_HALF_YEARLY,
             'enabled' => true,
             'sort' => 3,
         ],
         [
-            'product_id' => 'com.bilink.bilinklink.pass.12months',
+            'product_id' => 'com.bilink.bilinklink.pass.12month',
             'period' => Plan::PERIOD_YEARLY,
             'enabled' => true,
             'sort' => 4,

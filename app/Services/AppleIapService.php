@@ -133,12 +133,21 @@ class AppleIapService
 
         return collect($configured)
             ->filter(fn($item) => is_array($item) && ($item['enabled'] ?? false))
-            ->map(fn($item) => [
-                'product_id' => (string) ($item['product_id'] ?? ''),
+            ->map(function ($item) use ($planId) {
+                $productId = (string) ($item['product_id'] ?? '');
+                $productId = match ($productId) {
+                    'com.bilink.bilinklink.pass.3months' => 'com.bilink.bilinklink.pass.3month',
+                    'com.bilink.bilinklink.pass.6months' => 'com.bilink.bilinklink.pass.6month',
+                    'com.bilink.bilinklink.pass.12months' => 'com.bilink.bilinklink.pass.12month',
+                    default => $productId,
+                };
+                return [
+                'product_id' => $productId,
                 'plan_id' => $planId,
                 'period' => (string) ($item['period'] ?? ''),
                 'sort' => (int) ($item['sort'] ?? 0),
-            ])
+                ];
+            })
             ->filter(fn($item) => $item['product_id'] !== '' && in_array($item['period'], PlanService::getNewPeriods(), true))
             ->sortBy('sort')
             ->values()

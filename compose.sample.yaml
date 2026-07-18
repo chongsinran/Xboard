@@ -5,7 +5,7 @@ services:
       - docker=true
       # Apple App Store Server API credentials for BiLink In-App Purchases.
       # Replace the placeholder values before deployment.
-      - APPLE_IAP_BUNDLE_ID=com.easylink.easylink
+      - APPLE_IAP_BUNDLE_ID=com.bilink.bilinklink.pass
       - APPLE_IAP_ISSUER_ID=YOUR_APP_STORE_CONNECT_ISSUER_ID
       - APPLE_IAP_KEY_ID=YOUR_APP_STORE_CONNECT_KEY_ID
       - APPLE_IAP_PRIVATE_KEY_PATH=/run/secrets/apple_iap_key.p8

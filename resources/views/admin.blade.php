@@ -2502,9 +2502,9 @@
 
       const defaults = [
         { product_id: 'com.bilink.bilinklink.pass.1month', period: 'monthly', enabled: true, sort: 1 },
-        { product_id: 'com.bilink.bilinklink.pass.3months', period: 'quarterly', enabled: true, sort: 2 },
-        { product_id: 'com.bilink.bilinklink.pass.6months', period: 'half_yearly', enabled: true, sort: 3 },
-        { product_id: 'com.bilink.bilinklink.pass.12months', period: 'yearly', enabled: true, sort: 4 },
+        { product_id: 'com.bilink.bilinklink.pass.3month', period: 'quarterly', enabled: true, sort: 2 },
+        { product_id: 'com.bilink.bilinklink.pass.6month', period: 'half_yearly', enabled: true, sort: 3 },
+        { product_id: 'com.bilink.bilinklink.pass.12month', period: 'yearly', enabled: true, sort: 4 },
       ];
       const periodLabels = {
         monthly: t.monthly,
@@ -2757,7 +2757,13 @@
             : defaults;
           defaults.forEach((fallback, index) => {
             const product = products.find((item) => item.period === fallback.period) || fallback;
-            form.elements[`product_id_${index}`].value = product.product_id || fallback.product_id;
+            const legacyIds = {
+              'com.bilink.bilinklink.pass.3months': 'com.bilink.bilinklink.pass.3month',
+              'com.bilink.bilinklink.pass.6months': 'com.bilink.bilinklink.pass.6month',
+              'com.bilink.bilinklink.pass.12months': 'com.bilink.bilinklink.pass.12month',
+            };
+            form.elements[`product_id_${index}`].value =
+              legacyIds[product.product_id] || product.product_id || fallback.product_id;
             form.elements[`product_enabled_${index}`].checked =
               product.enabled === true || product.enabled === 1 || product.enabled === '1';
           });
