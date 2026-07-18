@@ -3,10 +3,24 @@
 declare(strict_types=1);
 
 $root = dirname(__DIR__);
-$bundlePath = $root . '/public/assets/admin/assets/index-DuZigjjp.js';
+$manifestPath = $root . '/public/assets/admin/manifest.json';
+$manifestContents = file_get_contents($manifestPath);
+if ($manifestContents === false) {
+    fwrite(STDERR, "Unable to read the Xboard admin manifest. Run git submodule update --init --recursive first.\n");
+    exit(1);
+}
+
+$manifest = json_decode($manifestContents, true);
+$bundleFile = $manifest['index.html']['file'] ?? null;
+if (!is_string($bundleFile) || !preg_match('#^assets/index-[A-Za-z0-9_-]+\.js$#', $bundleFile)) {
+    fwrite(STDERR, "Unable to locate the Xboard admin entry bundle in manifest.json.\n");
+    exit(1);
+}
+
+$bundlePath = $root . '/public/assets/admin/' . $bundleFile;
 $bundle = file_get_contents($bundlePath);
 if ($bundle === false) {
-    fwrite(STDERR, "Unable to read the Xboard admin bundle.\n");
+    fwrite(STDERR, "Unable to read the Xboard admin bundle: {$bundleFile}\n");
     exit(1);
 }
 

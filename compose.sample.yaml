@@ -43,6 +43,16 @@ services:
     command: php artisan ws-server start
     depends_on:
       - redis
+  personal-notice-ws:
+    image: ghcr.io/cedar2025/xboard:new
+    volumes:
+      - redis-data:/data
+      - ./:/www/
+    restart: always
+    network_mode: host
+    command: php artisan personal-notice-ws start --host=127.0.0.1 --port=8077
+    depends_on:
+      - redis
   redis:
     image: redis:7-alpine
     command: redis-server --unixsocket /data/redis.sock --unixsocketperm 777

@@ -1,0 +1,12 @@
+# Add this location inside the HTTPS server block for your Xboard domain.
+# The Flutter app connects to wss://your-domain.example/personal-notice.
+location /personal-notice {
+    proxy_pass http://127.0.0.1:8077;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_read_timeout 75s;
+    proxy_send_timeout 75s;
+}
