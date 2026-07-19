@@ -44,7 +44,9 @@ sed -i \
 echo "[2/8] Pulling container images..."
 docker compose pull
 
-echo "[3/8] Starting Redis..."
+echo "[3/8] Repairing the Redis volume and starting Redis..."
+docker compose run --rm --no-deps --user 0 --entrypoint sh redis \
+    -c 'chown -R redis:redis /data && chmod 775 /data'
 docker compose up -d redis
 for attempt in {1..30}; do
     if docker compose exec -T redis redis-cli -s /data/redis.sock ping 2>/dev/null | grep -q PONG; then
