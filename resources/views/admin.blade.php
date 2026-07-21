@@ -2455,9 +2455,9 @@
       const t = isEnglish ? {
         trigger: 'Apple IAP',
         title: 'Apple In-App Purchases',
-        description: 'Choose the Xboard plan granted by the four BiLink App Store products.',
+        description: 'Map each BiLink App Store product to its own Xboard plan and access period.',
         enable: 'Enable Apple IAP for non-mainland-China iOS users',
-        plan: 'Target Xboard plan',
+        plan: 'Granted Xboard plan',
         choosePlan: 'Choose a plan',
         products: 'App Store product mappings',
         productId: 'Product ID',
@@ -2478,9 +2478,9 @@
       } : {
         trigger: 'Apple 内购',
         title: 'Apple 应用内购买',
-        description: '选择四个 BiLink App Store 商品开通的 Xboard 套餐。',
+        description: '为每个 BiLink App Store 商品分别选择开通的 Xboard 套餐和使用周期。',
         enable: '为中国大陆以外的 iOS 用户启用 Apple 内购',
-        plan: '目标 Xboard 套餐',
+        plan: '开通的 Xboard 套餐',
         choosePlan: '请选择套餐',
         products: 'App Store 商品映射',
         productId: '商品 ID',
@@ -2501,10 +2501,10 @@
       };
 
       const defaults = [
-        { product_id: 'com.bilink.bilinklink.pass.1month', period: 'monthly', enabled: true, sort: 1 },
-        { product_id: 'com.bilink.bilinklink.pass.3month', period: 'quarterly', enabled: true, sort: 2 },
-        { product_id: 'com.bilink.bilinklink.pass.6month', period: 'half_yearly', enabled: true, sort: 3 },
-        { product_id: 'com.bilink.bilinklink.pass.12month', period: 'yearly', enabled: true, sort: 4 },
+        { product_id: 'com.bilink.bilinklink.pass.1month', plan_id: 0, period: 'monthly', enabled: true, sort: 1 },
+        { product_id: 'com.bilink.bilinklink.pass.3month', plan_id: 0, period: 'quarterly', enabled: true, sort: 2 },
+        { product_id: 'com.bilink.bilinklink.pass.6month', plan_id: 0, period: 'half_yearly', enabled: true, sort: 3 },
+        { product_id: 'com.bilink.bilinklink.pass.12month', plan_id: 0, period: 'yearly', enabled: true, sort: 4 },
       ];
       const periodLabels = {
         monthly: t.monthly,
@@ -2595,7 +2595,7 @@
           .apple-iap-products { display: grid; gap: 10px; }
           .apple-iap-product {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 120px 72px;
+            grid-template-columns: minmax(0, 1.2fr) minmax(180px, .8fr) 110px 64px;
             gap: 10px;
             align-items: end;
             padding: 13px;
@@ -2619,9 +2619,10 @@
           .apple-iap-close { border: 1px solid #d1d5db; color: #111827; background: #fff; }
           .apple-iap-save { border: 1px solid #111827; color: #fff; background: #111827; }
           @media (max-width: 640px) {
-            .apple-iap-product { grid-template-columns: minmax(0, 1fr) 82px; }
+            .apple-iap-product { grid-template-columns: minmax(0, 1fr) 74px; }
+            .apple-iap-product .apple-iap-field { grid-column: 1 / -1; }
             .apple-iap-product-period { grid-column: 1; padding-bottom: 0; }
-            .apple-iap-product-enabled { grid-column: 2; grid-row: 1 / span 2; align-self: center; padding: 0; }
+            .apple-iap-product-enabled { grid-column: 2; align-self: center; padding: 0; }
             .apple-iap-plan-entry { align-items: flex-start; flex-direction: column; }
           }
         </style>
@@ -2638,12 +2639,6 @@
                   <input name="apple_iap_enable" type="checkbox" />
                   <span>${t.enable}</span>
                 </label>
-                <div class="apple-iap-field">
-                  <label for="apple_iap_plan_id">${t.plan}</label>
-                  <select id="apple_iap_plan_id" name="apple_iap_plan_id">
-                    <option value="0">${t.choosePlan}</option>
-                  </select>
-                </div>
                 <div class="apple-iap-products">
                   <div class="apple-iap-products-title">${t.products}</div>
                   ${defaults.map((product, index) => `
@@ -2651,6 +2646,12 @@
                       <div class="apple-iap-field">
                         <label>${t.productId}</label>
                         <input name="product_id_${index}" type="text" value="${product.product_id}" />
+                      </div>
+                      <div class="apple-iap-field">
+                        <label>${t.plan}</label>
+                        <select name="product_plan_${index}">
+                          <option value="0">${t.choosePlan}</option>
+                        </select>
                       </div>
                       <div class="apple-iap-product-period">${periodLabels[product.period]}</div>
                       <label class="apple-iap-product-enabled" title="${t.enabled}">
@@ -2675,7 +2676,6 @@
       const trigger = root.querySelector('.apple-iap-trigger');
       const backdrop = root.querySelector('.apple-iap-backdrop');
       const form = root.querySelector('.apple-iap-form');
-      const planSelect = form.elements.apple_iap_plan_id;
       const closeButton = root.querySelector('.apple-iap-close');
       const saveButton = root.querySelector('.apple-iap-save');
       const status = root.querySelector('.apple-iap-status');
@@ -2745,12 +2745,14 @@
 
           const settings = configPayload?.data?.apple_iap || {};
           const plans = Array.isArray(plansPayload?.data) ? plansPayload.data : [];
-          planSelect.innerHTML = `<option value="0">${plans.length ? t.choosePlan : t.noPlans}</option>`
+          const planOptions = `<option value="0">${plans.length ? t.choosePlan : t.noPlans}</option>`
             + plans.map((plan) =>
               `<option value="${Number(plan.id)}">${escapeHtml(plan.name)} (#${Number(plan.id)})</option>`
             ).join('');
+          defaults.forEach((_, index) => {
+            form.elements[`product_plan_${index}`].innerHTML = planOptions;
+          });
           form.elements.apple_iap_enable.checked = Boolean(settings.apple_iap_enable);
-          planSelect.value = String(settings.apple_iap_plan_id || 0);
 
           const products = Array.isArray(settings.apple_iap_products)
             ? settings.apple_iap_products
@@ -2766,6 +2768,9 @@
               legacyIds[product.product_id] || product.product_id || fallback.product_id;
             form.elements[`product_enabled_${index}`].checked =
               product.enabled === true || product.enabled === 1 || product.enabled === '1';
+            form.elements[`product_plan_${index}`].value = String(
+              product.plan_id || settings.apple_iap_plan_id || fallback.plan_id || 0
+            );
           });
           setStatus('');
         } catch (_) {
@@ -2785,6 +2790,7 @@
         setStatus('');
         const products = defaults.map((item, index) => ({
           product_id: form.elements[`product_id_${index}`].value.trim(),
+          plan_id: Number(form.elements[`product_plan_${index}`].value || 0),
           period: item.period,
           enabled: form.elements[`product_enabled_${index}`].checked,
           sort: item.sort,
@@ -2796,7 +2802,7 @@
             credentials: 'same-origin',
             body: JSON.stringify({
               apple_iap_enable: form.elements.apple_iap_enable.checked,
-              apple_iap_plan_id: Number(planSelect.value || 0),
+              apple_iap_plan_id: 0,
               apple_iap_products: products,
             }),
           });

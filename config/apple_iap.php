@@ -12,24 +12,28 @@ return [
     'products' => [
         [
             'product_id' => 'com.bilink.bilinklink.pass.1month',
+            'plan_id' => 0,
             'period' => Plan::PERIOD_MONTHLY,
             'enabled' => true,
             'sort' => 1,
         ],
         [
             'product_id' => 'com.bilink.bilinklink.pass.3month',
+            'plan_id' => 0,
             'period' => Plan::PERIOD_QUARTERLY,
             'enabled' => true,
             'sort' => 2,
         ],
         [
             'product_id' => 'com.bilink.bilinklink.pass.6month',
+            'plan_id' => 0,
             'period' => Plan::PERIOD_HALF_YEARLY,
             'enabled' => true,
             'sort' => 3,
         ],
         [
             'product_id' => 'com.bilink.bilinklink.pass.12month',
+            'plan_id' => 0,
             'period' => Plan::PERIOD_YEARLY,
             'enabled' => true,
             'sort' => 4,

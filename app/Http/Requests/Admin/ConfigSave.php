@@ -111,6 +111,7 @@ class ConfigSave extends FormRequest
         'apple_iap_plan_id' => 'integer|min:0',
         'apple_iap_products' => 'array|size:4',
         'apple_iap_products.*.product_id' => 'required|string|max:191|distinct',
+        'apple_iap_products.*.plan_id' => 'required|integer|min:0',
         'apple_iap_products.*.period' => 'required|in:monthly,quarterly,half_yearly,yearly',
         'apple_iap_products.*.enabled' => 'required|boolean',
         'apple_iap_products.*.sort' => 'required|integer|min:0',

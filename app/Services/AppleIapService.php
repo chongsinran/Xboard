@@ -21,9 +21,8 @@ class AppleIapService
         $isIos = strtolower((string) $request->header('X-Client-Platform')) === 'ios';
         $countryCode = $this->resolveCountryCode($request);
         $enabled = (bool) admin_setting('apple_iap_enable', false);
-        $planId = (int) admin_setting('apple_iap_plan_id', 0);
-        $products = $this->getConfiguredProducts($planId);
-        $useIap = $enabled && $isIos && $countryCode !== null && $countryCode !== 'CN' && $planId > 0 && $products !== [];
+        $products = $this->getConfiguredProducts();
+        $useIap = $enabled && $isIos && $countryCode !== null && $countryCode !== 'CN' && $products !== [];
 
         return [
             'purchase_mode' => $useIap ? 'apple_iap' : 'standard',
@@ -65,18 +64,17 @@ class AppleIapService
             throw new ApiException(__('Apple product is not a consumable purchase'));
         }
 
-        $planId = (int) admin_setting('apple_iap_plan_id', 0);
-        $mapping = collect($this->getConfiguredProducts($planId))
+        $mapping = collect($this->getConfiguredProducts())
             ->firstWhere('product_id', $productId);
         if (!$mapping) {
             throw new ApiException(__('Apple product is not enabled'));
         }
 
-        $plan = Plan::find($planId);
+        $plan = Plan::find((int) $mapping['plan_id']);
         if (!$plan) {
             throw new ApiException(__('Subscription plan does not exist'));
         }
-        (new PlanService($plan))->validatePurchase($user, $mapping['period']);
+        $this->validateMappedPlanPurchase($user, $plan, $mapping['period']);
 
         $transaction = DB::transaction(function () use ($user, $plan, $mapping, $payload, $environment, $transactionId, $bundleId, $productId) {
             $existing = AppleIapTransaction::where('transaction_id', $transactionId)
@@ -121,8 +119,9 @@ class AppleIapService
         return $this->completeExisting($transaction);
     }
 
-    public function getConfiguredProducts(int $planId): array
+    public function getConfiguredProducts(?int $legacyPlanId = null): array
     {
+        $legacyPlanId ??= (int) admin_setting('apple_iap_plan_id', 0);
         $configured = admin_setting('apple_iap_products', config('apple_iap.products', []));
         if (is_string($configured)) {
             $configured = json_decode($configured, true);
@@ -133,8 +132,9 @@ class AppleIapService
 
         return collect($configured)
             ->filter(fn($item) => is_array($item) && ($item['enabled'] ?? false))
-            ->map(function ($item) use ($planId) {
+            ->map(function ($item) use ($legacyPlanId) {
                 $productId = (string) ($item['product_id'] ?? '');
+                $productPlanId = (int) ($item['plan_id'] ?? 0);
                 $productId = match ($productId) {
                     'com.bilink.bilinklink.pass.3months' => 'com.bilink.bilinklink.pass.3month',
                     'com.bilink.bilinklink.pass.6months' => 'com.bilink.bilinklink.pass.6month',
@@ -143,15 +143,34 @@ class AppleIapService
                 };
                 return [
                 'product_id' => $productId,
-                'plan_id' => $planId,
+                'plan_id' => $productPlanId > 0 ? $productPlanId : $legacyPlanId,
                 'period' => (string) ($item['period'] ?? ''),
                 'sort' => (int) ($item['sort'] ?? 0),
                 ];
             })
-            ->filter(fn($item) => $item['product_id'] !== '' && in_array($item['period'], PlanService::getNewPeriods(), true))
+            ->filter(fn($item) => $item['product_id'] !== ''
+                && $item['plan_id'] > 0
+                && in_array($item['period'], PlanService::getNewPeriods(), true))
             ->sortBy('sort')
             ->values()
             ->all();
+    }
+
+    private function validateMappedPlanPurchase(User $user, Plan $plan, string $period): void
+    {
+        $periodKey = PlanService::getPeriodKey($period);
+        if (($plan->prices[$periodKey] ?? null) === null) {
+            throw new ApiException(__('This payment period cannot be purchased, please choose another period'));
+        }
+
+        $planService = new PlanService($plan);
+        if ((int) $user->plan_id !== (int) $plan->id && !$planService->hasCapacity($plan)) {
+            throw new ApiException(__('Current product is sold out'));
+        }
+
+        if ((int) $user->plan_id === (int) $plan->id && !$plan->renew) {
+            throw new ApiException(__('This subscription cannot be renewed, please change to another subscription'));
+        }
     }
 
     private function completeExisting(AppleIapTransaction $transaction): array
@@ -197,7 +216,11 @@ class AppleIapService
             return [$this->decodeSignedPayload($production), 'Production'];
         }
 
-        if ($production->status() === 404) {
+        // TestFlight and sandbox purchases can receive an authorization-style
+        // response from the production endpoint even though the same App Store
+        // Server API key is valid in the sandbox environment. In that case,
+        // retry against sandbox instead of rejecting the purchase prematurely.
+        if (in_array($production->status(), [401, 404], true)) {
             $sandbox = $this->requestTransaction('https://api.storekit-sandbox.apple.com', $transactionId, $token);
             if ($sandbox->successful()) {
                 return [$this->decodeSignedPayload($sandbox), 'Sandbox'];
@@ -212,7 +235,7 @@ class AppleIapService
         return Http::withToken($token)
             ->acceptJson()
             ->timeout(15)
-            ->retry(2, 250)
+            ->retry(2, 250, null, false)
             ->get($baseUrl . '/inApps/v1/transactions/' . rawurlencode($transactionId));
     }
 
