@@ -12,7 +12,7 @@ services:
       # Enable only when every request reaches Xboard through trusted Cloudflare.
       - APPLE_IAP_TRUST_CF_COUNTRY_HEADER=false
     volumes:
-      - redis-data:/data
+      - redis-socket:/run/redis
       - ./:/www/
       # Put the App Store Connect private key at ./secrets/AuthKey.p8.
       - ./secrets/AuthKey.p8:/run/secrets/apple_iap_key.p8:ro
@@ -23,20 +23,34 @@ services:
       sh -lc "php scripts/patch_ios_admin_bundle.php &&
       exec php artisan octane:start --port=7001 --host=0.0.0.0"
     restart: always
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:7001/api/v1/guest/comm/config') === false ? 1 : 0);"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
   horizon:
     image: ghcr.io/cedar2025/xboard:new
     volumes:
-      - redis-data:/data
+      - redis-socket:/run/redis
       - ./:/www/
     restart: always
     network_mode: host
-    command: php artisan horizon
+    entrypoint: ["php", "artisan"]
+    command:
+      - "queue:work"
+      - "redis"
+      - "--queue=traffic_fetch,stat,user_alive_sync,default,order_handle,send_email,send_telegram,send_email_mass,node_sync"
+      - "--sleep=3"
+      - "--tries=3"
+      - "--timeout=60"
+      - "--memory=256"
     depends_on:
       - redis
   ws-server:
     image: ghcr.io/cedar2025/xboard:new
     volumes:
-      - redis-data:/data
+      - redis-socket:/run/redis
       - ./:/www/
     restart: always
     network_mode: host
@@ -46,7 +60,7 @@ services:
   personal-notice-ws:
     image: ghcr.io/cedar2025/xboard:new
     volumes:
-      - redis-data:/data
+      - redis-socket:/run/redis
       - ./:/www/
     restart: always
     network_mode: host
@@ -55,12 +69,14 @@ services:
       - redis
   redis:
     image: redis:7-alpine
-    command: redis-server --unixsocket /data/redis.sock --unixsocketperm 777
+    command: redis-server --dir /data --unixsocket /run/redis/redis.sock --unixsocketperm 777
     restart: unless-stopped
     volumes:
       - redis-data:/data
+      - redis-socket:/run/redis
     sysctls:
       net.core.somaxconn: 1024
 
 volumes:
   redis-data:
+  redis-socket:
