@@ -36,6 +36,10 @@ class CommController extends Controller
             'ios_download_url' => admin_setting('ios_download_url', ''),
             'android_version' => admin_setting('android_version', ''),
             'android_download_url' => admin_setting('android_download_url', ''),
+            'free_node_enable' => (bool) admin_setting('free_node_enable', 0),
+            'free_node_subscription_url' => (bool) admin_setting('free_node_enable', 0)
+                ? admin_setting('free_node_subscription_url', '')
+                : '',
             // 保持向后兼容
             'is_recaptcha' => (int) admin_setting('captcha_enable', 0) ? 1 : 0,
         ];

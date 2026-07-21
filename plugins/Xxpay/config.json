@@ -1,0 +1,8 @@
+{
+    "name": "XXPay",
+    "code": "xxpay",
+    "type": "payment",
+    "version": "1.0.0",
+    "description": "XXPay unified-order payment gateway",
+    "author": "RyanChong"
+}

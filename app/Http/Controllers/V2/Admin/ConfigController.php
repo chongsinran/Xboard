@@ -153,6 +153,8 @@ class ConfigController extends Controller
                 'default_remind_expire' => (bool) admin_setting('default_remind_expire', 1),
                 'default_remind_traffic' => (bool) admin_setting('default_remind_traffic', 1),
                 'subscribe_path' => admin_setting('subscribe_path', 's'),
+                'free_node_enable' => (bool) admin_setting('free_node_enable', 0),
+                'free_node_subscription_url' => admin_setting('free_node_subscription_url', ''),
             ],
             'frontend' => [
                 'frontend_theme' => admin_setting('frontend_theme', 'Xboard'),

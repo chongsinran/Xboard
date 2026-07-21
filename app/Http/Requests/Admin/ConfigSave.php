@@ -69,6 +69,8 @@ class ConfigSave extends FormRequest
         'show_info_to_server_enable' => '',
         'show_protocol_to_server_enable' => '',
         'subscribe_path' => '',
+        'free_node_enable' => 'boolean',
+        'free_node_subscription_url' => 'nullable|url',
         // server
         'server_token' => 'nullable|min:16',
         'server_pull_interval' => 'integer',
@@ -163,6 +165,7 @@ class ConfigSave extends FormRequest
         return [
             'app_url.url' => '站点URL格式不正确，必须携带http(s)://',
             'subscribe_url.url' => '订阅URL格式不正确，必须携带http(s)://',
+            'free_node_subscription_url.url' => '免费节点订阅链接格式不正确，必须携带http(s)://',
             'server_token.min' => '通讯密钥长度必须大于16位',
             'tos_url.url' => '服务条款URL格式不正确，必须携带http(s)://',
             'telegram_webhook_url.url' => 'Telegram Webhook地址格式不正确，必须携带http(s)://',
