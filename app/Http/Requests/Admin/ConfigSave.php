@@ -47,6 +47,7 @@ class ConfigSave extends FormRequest
         // site
         'logo' => 'nullable|url',
         'force_https' => '',
+        'user_panel_enable' => 'boolean',
         'stop_register' => '',
         'app_name' => '',
         'app_description' => '',

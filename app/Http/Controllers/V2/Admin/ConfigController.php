@@ -129,6 +129,7 @@ class ConfigController extends Controller
             'site' => [
                 'logo' => admin_setting('logo'),
                 'force_https' => (int) admin_setting('force_https', 0),
+                'user_panel_enable' => (bool) admin_setting('user_panel_enable', false),
                 'stop_register' => (int) admin_setting('stop_register', 0),
                 'app_name' => admin_setting('app_name', 'XBoard'),
                 'app_description' => admin_setting('app_description', 'XBoard is best!'),

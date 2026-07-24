@@ -20,6 +20,12 @@ use Illuminate\Support\Facades\File;
 
 
 Route::get('/', function (Request $request) {
+    // The customer-facing web panel is opt-in. Keep the admin panel, client
+    // APIs, and subscription endpoints available when it is disabled.
+    if (!(bool) admin_setting('user_panel_enable', false)) {
+        abort(404);
+    }
+
     if (admin_setting('app_url') && admin_setting('safe_mode_enable', 0)) {
         $requestHost = $request->getHost();
         $configHost = parse_url(admin_setting('app_url'), PHP_URL_HOST);

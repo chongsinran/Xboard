@@ -105,6 +105,7 @@ docker compose run --rm --entrypoint composer web \
 echo "[6/10] Applying the admin bundle patch..."
 docker compose run --rm --entrypoint php web scripts/patch_ios_admin_bundle.php
 docker compose run --rm --entrypoint php web scripts/patch_free_node_admin_bundle.php
+docker compose run --rm --entrypoint php web scripts/patch_user_panel_admin_bundle.php
 
 if grep -q '^INSTALLED=true' .env; then
     echo "[7/10] Updating the existing Xboard installation..."
