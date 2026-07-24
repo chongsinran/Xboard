@@ -68,6 +68,10 @@ class RouteServiceProvider extends ServiceProvider
             'middleware' => 'api',
             'namespace' => $this->namespace
         ], function ($router) {
+            $router->get('/', function () {
+                return response('Ok', 200);
+            });
+
             foreach (glob(app_path('Http//Routes//V1') . '/*.php') as $file) {
                 $this->app->make('App\\Http\\Routes\\V1\\' . basename($file, '.php'))->map($router);
             }
